@@ -1,0 +1,81 @@
+# XIV Dye Tools Discord Moderation Bot - Cloudflare Workers
+# See: https://developers.cloudflare.com/workers/wrangler/configuration/
+
+name = "xivdyetools-moderation-worker"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Custom domain routing
+routes = [
+  { pattern = "moderation-bot.xivdyetools.projectgalatine.com", custom_domain = true }
+]
+
+# ============================================================================
+# KV Namespace for user preferences (language settings)
+# Shared with main discord-worker
+# ============================================================================
+[[kv_namespaces]]
+binding = "KV"
+id = "1fcb7e037ccd4172a47fccd97cf8e753"
+
+# ============================================================================
+# D1 Database (shared with presets API)
+# ============================================================================
+[[d1_databases]]
+binding = "DB"
+database_name = "xivdyetools-presets"
+database_id = "e17d68a1-5a44-4c88-b02b-07d053cbe321"
+
+# ============================================================================
+# Service Binding to Preset API Worker
+# Enables direct Worker-to-Worker communication without going through public URL.
+# ============================================================================
+[[services]]
+binding = "PRESETS_API"
+service = "xivdyetools-presets-api"
+
+# ============================================================================
+# Environment Variables (non-sensitive)
+# ============================================================================
+[vars]
+DISCORD_CLIENT_ID = "1453806659708129374"
+PRESETS_API_URL = "https://api.xivdyetools.projectgalatine.com"
+
+# ============================================================================
+# Secrets (set via wrangler secret put):
+# - DISCORD_TOKEN          (moderation bot token)
+# - DISCORD_PUBLIC_KEY     (moderation bot public key)
+# - BOT_API_SECRET         (same as main worker - shared auth to presets API)
+# - BOT_SIGNING_SECRET     (same as main worker - HMAC signing key)
+# - MODERATOR_IDS          (comma-separated Discord user IDs)
+# - MODERATION_CHANNEL_ID  (channel for moderation commands)
+# - SUBMISSION_LOG_CHANNEL_ID (optional - channel for submission logs)
+# ============================================================================
+
+# ============================================================================
+# Production Environment
+# ============================================================================
+[env.production]
+name = "xivdyetools-moderation-worker"
+
+[env.production.vars]
+# Production Discord Application ID - UPDATE WITH YOUR APP ID
+DISCORD_CLIENT_ID = "YOUR_MODERATION_BOT_CLIENT_ID"
+PRESETS_API_URL = "https://api.xivdyetools.projectgalatine.com"
+
+# KV Namespace for user preferences
+[[env.production.kv_namespaces]]
+binding = "KV"
+id = "1fcb7e037ccd4172a47fccd97cf8e753"
+
+# D1 Database (shared with presets API)
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "xivdyetools-presets"
+database_id = "e17d68a1-5a44-4c88-b02b-07d053cbe321"
+
+# Service Binding to Preset API Worker
+[[env.production.services]]
+binding = "PRESETS_API"
+service = "xivdyetools-presets-api"

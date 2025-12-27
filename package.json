@@ -1,0 +1,44 @@
+{
+  "name": "xivdyetools-moderation-worker",
+  "version": "1.0.0",
+  "description": "XIV Dye Tools Discord Moderation Bot - Cloudflare Workers Edition",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:production": "wrangler deploy --env production",
+    "test": "vitest",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint src/",
+    "register-commands": "npx tsx scripts/register-commands.ts"
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "ffxiv",
+    "cloudflare-workers",
+    "moderation"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@cloudflare/workers-types": "^4.20251205.0",
+    "@xivdyetools/logger": "^1.0.2",
+    "@xivdyetools/types": "^1.1.1",
+    "discord-interactions": "^4.4.0",
+    "hono": "^4.10.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@vitest/coverage-v8": "^4.0.15",
+    "@xivdyetools/test-utils": "^1.0.2",
+    "dotenv": "^17.2.3",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.15",
+    "wrangler": "^4.53.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
