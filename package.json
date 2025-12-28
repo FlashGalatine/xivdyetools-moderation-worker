@@ -8,6 +8,8 @@
     "deploy": "wrangler deploy",
     "deploy:production": "wrangler deploy --env production",
     "test": "vitest",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "type-check": "tsc --noEmit",
     "lint": "eslint src/",
     "register-commands": "npx tsx scripts/register-commands.ts"

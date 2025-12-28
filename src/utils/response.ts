@@ -69,9 +69,9 @@ export interface InteractionResponseData {
 }
 
 // Response flags
-export const MessageFlags = {
+export const MessageFlags = Object.freeze({
   EPHEMERAL: 64,
-} as const;
+} as const);
 
 /**
  * Creates a PONG response for Discord's PING verification.
