@@ -49,6 +49,26 @@ type Variables = RequestIdVariables & {
 // Create Hono app with environment type
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
+// Startup validation middleware - validates security config on first request
+let startupValidationDone = false;
+app.use('*', (c, next) => {
+  if (!startupValidationDone) {
+    startupValidationDone = true;
+    const validation = presetApi.validateSecurityConfig(c.env);
+
+    if (validation.errors.length > 0) {
+      console.error('❌ Security configuration errors:', validation.errors);
+    }
+    if (validation.warnings.length > 0) {
+      console.warn('⚠️  Security configuration warnings:', validation.warnings);
+    }
+    if (validation.valid && validation.warnings.length === 0) {
+      console.log('✅ Security configuration validated');
+    }
+  }
+  return next();
+});
+
 // Request ID middleware (must be early for tracing)
 app.use('*', requestIdMiddleware);
 
@@ -61,17 +81,17 @@ app.use('*', async (c, next) => {
   c.header('X-Content-Type-Options', 'nosniff');
   c.header('X-Frame-Options', 'DENY');
   c.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  c.header('Cache-Control', 'no-store');
+  c.header('Content-Security-Policy', "default-src 'none'");
+  c.header('Referrer-Policy', 'no-referrer');
 });
 
 /**
  * Health check endpoint
+ * Returns minimal information to prevent service fingerprinting
  */
 app.get('/health', (c) => {
-  return c.json({
-    status: 'healthy',
-    service: 'xivdyetools-moderation-worker',
-    timestamp: new Date().toISOString(),
-  });
+  return c.json({ status: 'ok' });
 });
 
 /**
@@ -184,7 +204,11 @@ async function handleCommand(
   }
 
   // Increment rate limit counter
-  ctx.waitUntil(incrementRateLimit(env.KV, userId, 'command'));
+  ctx.waitUntil(
+    incrementRateLimit(env.KV, userId, 'command').catch((err) => {
+      logger.error('Failed to increment command rate limit', err instanceof Error ? err : undefined);
+    })
+  );
 
   logger.info('Handling command', { command: commandName, userId });
 

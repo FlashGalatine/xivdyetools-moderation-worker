@@ -125,7 +125,14 @@ async function handleModerateSubcommand(
   const deferResponse = deferredResponse();
 
   ctx.waitUntil(
-    processModerateCommand(interaction, env, t, userId, action, presetId, reason, logger)
+    processModerateCommand(interaction, env, t, userId, action, presetId, reason, logger).catch(
+      (err) => {
+        logger?.error(
+          'Unhandled error in processModerateCommand',
+          err instanceof Error ? err : undefined
+        );
+      }
+    )
   );
 
   return deferResponse;
@@ -418,7 +425,11 @@ async function handleUnbanUserSubcommand(
   // Defer response for async processing
   const deferResponse = deferredResponse(true); // Ephemeral
 
-  ctx.waitUntil(processUnban(interaction, env, t, userId, targetUserId, logger));
+  ctx.waitUntil(
+    processUnban(interaction, env, t, userId, targetUserId, logger).catch((err) => {
+      logger?.error('Unhandled error in processUnban', err instanceof Error ? err : undefined);
+    })
+  );
 
   return deferResponse;
 }

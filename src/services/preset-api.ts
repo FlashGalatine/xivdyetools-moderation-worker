@@ -199,6 +199,43 @@ async function request<T>(
 // ============================================================================
 
 /**
+ * Validate security configuration at startup
+ * Logs warnings for missing security-critical secrets
+ */
+export function validateSecurityConfig(env: Env): {
+  valid: boolean;
+  warnings: string[];
+  errors: string[];
+} {
+  const warnings: string[] = [];
+  const errors: string[] = [];
+
+  // Check if using service binding vs HTTP API
+  const usingServiceBinding = Boolean(env.PRESETS_API);
+
+  if (!usingServiceBinding) {
+    // When using HTTP API, BOT_API_SECRET is required
+    if (!env.BOT_API_SECRET) {
+      errors.push('BOT_API_SECRET is required when using PRESETS_API_URL');
+    }
+  }
+
+  // BOT_SIGNING_SECRET is recommended for HMAC request signing
+  if (!env.BOT_SIGNING_SECRET) {
+    warnings.push(
+      'BOT_SIGNING_SECRET is not set - HMAC request signatures will be disabled. ' +
+        'This reduces security for worker-to-worker communication.'
+    );
+  }
+
+  return {
+    valid: errors.length === 0,
+    warnings,
+    errors,
+  };
+}
+
+/**
  * Check if the preset API is configured and available
  */
 export function isApiEnabled(env: Env): boolean {
