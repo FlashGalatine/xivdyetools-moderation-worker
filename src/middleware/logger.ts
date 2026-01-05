@@ -9,6 +9,7 @@ import type { Context, Next } from 'hono';
 import type { ExtendedLogger } from '@xivdyetools/logger';
 import { createRequestLogger } from '@xivdyetools/logger/worker';
 import type { Env } from '../types/env.js';
+import { sanitizeUrl } from '../utils/url-sanitizer.js';
 
 /**
  * Variables type for Hono context with logger
@@ -72,10 +73,12 @@ export function getLogger(c: Context<any>): ExtendedLogger | undefined {
 
 /**
  * Extract request info for logging
+ * Sanitizes URLs to prevent token exposure in logs
  */
 function getRequestInfo(c: Context): { method: string; path: string } {
+  const url = new URL(c.req.url);
   return {
     method: c.req.method,
-    path: new URL(c.req.url).pathname,
+    path: sanitizeUrl(url.pathname + url.search), // Sanitize path + query params
   };
 }

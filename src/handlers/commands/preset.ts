@@ -101,6 +101,11 @@ async function handleModerateSubcommand(
   options?: Array<{ name: string; value?: string | number | boolean }>,
   logger?: ExtendedLogger
 ): Promise<Response> {
+  // Check channel restriction FIRST (before moderator check)
+  if (!isInModerationChannel(interaction, env)) {
+    return ephemeralResponse('This command must be used in the moderation channel.');
+  }
+
   // Check moderator status
   if (!presetApi.isModerator(env, userId)) {
     return messageResponse({

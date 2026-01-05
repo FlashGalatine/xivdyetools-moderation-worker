@@ -9,6 +9,7 @@
  * @module services/ban-service
  */
 
+import { validateAndEscapeQuery } from '../utils/sql-helpers.js';
 import type {
   BannedUserRow,
   BannedUser,
@@ -51,7 +52,12 @@ export async function searchPresetAuthors(
   query: string,
   limit: number = 25
 ): Promise<UserSearchResult[]> {
-  const escapedQuery = query.replace(/[%_\\]/g, '\\$&');
+  // Validate and escape user input for SQL LIKE query
+  const validation = validateAndEscapeQuery(query, { maxLength: 100, minLength: 1 });
+  if (!validation.valid) {
+    return []; // Return empty results for invalid queries
+  }
+  const escapedQuery = validation.sanitized;
 
   try {
     const results = await db
@@ -115,7 +121,12 @@ export async function searchBannedUsers(
   query: string,
   limit: number = 25
 ): Promise<BannedUserSearchResult[]> {
-  const escapedQuery = query.replace(/[%_\\]/g, '\\$&');
+  // Validate and escape user input for SQL LIKE query
+  const validation = validateAndEscapeQuery(query, { maxLength: 100, minLength: 1 });
+  if (!validation.valid) {
+    return []; // Return empty results for invalid queries
+  }
+  const escapedQuery = validation.sanitized;
 
   try {
     const results = await db

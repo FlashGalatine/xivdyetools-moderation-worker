@@ -17,7 +17,14 @@ import type { ExtendedLogger } from '@xivdyetools/logger';
 import type { Env } from './types/env.js';
 import { InteractionType, InteractionResponseType } from './types/env.js';
 import { verifyDiscordRequest, unauthorizedResponse, badRequestResponse } from './utils/verify.js';
-import { pongResponse, ephemeralResponse } from './utils/response.js';
+import { pongResponse, ephemeralResponse, rateLimitedResponse } from './utils/response.js';
+import { safeParseJSON } from './utils/safe-json.js';
+import {
+  checkRateLimit,
+  incrementRateLimit,
+  RATE_LIMIT_CONFIGS,
+  type RateLimitType,
+} from './middleware/rate-limit.js';
 import { handlePresetCommand } from './handlers/commands/index.js';
 import { handleButtonInteraction } from './handlers/buttons/index.js';
 import {
@@ -92,13 +99,23 @@ app.post('/', async (c) => {
     return unauthorizedResponse(error);
   }
 
-  // Parse the interaction
-  let interaction: DiscordInteraction;
-  try {
-    interaction = JSON.parse(body);
-  } catch {
-    return badRequestResponse('Invalid JSON body');
+  // Parse the interaction with safety checks
+  const parseResult = safeParseJSON<DiscordInteraction>(body, {
+    maxDepth: 10, // Discord interactions are shallow
+    validateStructure: true,
+    freezeResult: true,
+  });
+
+  if (!parseResult.success) {
+    logger.warn('JSON parse failed', { error: parseResult.error });
+    return badRequestResponse(parseResult.error || 'Invalid JSON body');
   }
+
+  if (parseResult.warnings && parseResult.warnings.length > 0) {
+    logger.info('JSON parse warnings', { warnings: parseResult.warnings });
+  }
+
+  const interaction = parseResult.data!
 
   // Handle PING (required for Discord endpoint verification)
   if (interaction.type === InteractionType.PING) {
@@ -148,6 +165,27 @@ async function handleCommand(
     return ephemeralResponse('Unable to identify user. Please try again.');
   }
 
+  // Check rate limit for commands
+  const rateLimitCheck = await checkRateLimit(
+    env.KV,
+    userId,
+    'command',
+    RATE_LIMIT_CONFIGS.command
+  );
+
+  if (!rateLimitCheck.allowed) {
+    logger.warn('Rate limit exceeded', {
+      userId,
+      commandName,
+      type: 'command',
+      retryAfter: rateLimitCheck.retryAfter,
+    });
+    return rateLimitedResponse(rateLimitCheck.resetTime);
+  }
+
+  // Increment rate limit counter
+  ctx.waitUntil(incrementRateLimit(env.KV, userId, 'command'));
+
   logger.info('Handling command', { command: commandName, userId });
 
   // Create translator for the user
@@ -180,7 +218,42 @@ async function handleAutocomplete(
   logger: ExtendedLogger
 ): Promise<Response> {
   const commandName = interaction.data?.name;
+  const userId = interaction.member?.user?.id ?? interaction.user?.id;
   const options = interaction.data?.options || [];
+
+  if (!userId) {
+    logger.error('Unable to identify user from autocomplete interaction', { commandName });
+    return Response.json({
+      type: InteractionResponseType.APPLICATION_COMMAND_AUTOCOMPLETE_RESULT,
+      data: { choices: [] },
+    });
+  }
+
+  // Check rate limit for autocomplete (higher limit due to typing)
+  const rateLimitCheck = await checkRateLimit(
+    env.KV,
+    userId,
+    'autocomplete',
+    RATE_LIMIT_CONFIGS.autocomplete
+  );
+
+  if (!rateLimitCheck.allowed) {
+    logger.warn('Autocomplete rate limit exceeded', {
+      userId,
+      commandName,
+      type: 'autocomplete',
+    });
+    // Return empty choices for autocomplete rate limiting
+    return Response.json({
+      type: InteractionResponseType.APPLICATION_COMMAND_AUTOCOMPLETE_RESULT,
+      data: { choices: [] },
+    });
+  }
+
+  // Increment rate limit counter (non-blocking)
+  incrementRateLimit(env.KV, userId, 'autocomplete').catch((err) => {
+    logger.error('Failed to increment autocomplete rate limit', err instanceof Error ? err : undefined);
+  });
 
   // Find the focused option (the one the user is currently typing in)
   let focusedOption: { name: string; value?: string | number | boolean; focused?: boolean } | undefined;

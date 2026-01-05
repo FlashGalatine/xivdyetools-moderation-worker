@@ -5,6 +5,7 @@
  * and other Discord API operations.
  */
 
+import { sanitizeUrl, sanitizeErrorMessage } from './url-sanitizer.js';
 import type { DiscordEmbed, DiscordActionRow } from './response.js';
 
 const DISCORD_API_BASE = 'https://discord.com/api/v10';
@@ -33,13 +34,21 @@ export async function sendFollowUp(
   if (options.components) body.components = options.components;
   if (options.ephemeral) body.flags = 64;
 
-  return fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
+  try {
+    return await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+  } catch (error) {
+    console.error('Discord API request failed', {
+      url: sanitizeUrl(url),
+      error: sanitizeErrorMessage(error),
+    });
+    throw error;
+  }
 }
 
 /**
@@ -57,13 +66,21 @@ export async function editOriginalResponse(
   if (options.embeds) body.embeds = options.embeds;
   if (options.components) body.components = options.components;
 
-  return fetch(url, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
+  try {
+    return await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+  } catch (error) {
+    console.error('Discord API request failed', {
+      url: sanitizeUrl(url),
+      error: sanitizeErrorMessage(error),
+    });
+    throw error;
+  }
 }
 
 /**
@@ -75,9 +92,17 @@ export async function deleteOriginalResponse(
 ): Promise<Response> {
   const url = `${DISCORD_API_BASE}/webhooks/${applicationId}/${interactionToken}/messages/@original`;
 
-  return fetch(url, {
-    method: 'DELETE',
-  });
+  try {
+    return await fetch(url, {
+      method: 'DELETE',
+    });
+  } catch (error) {
+    console.error('Discord API request failed', {
+      url: sanitizeUrl(url),
+      error: sanitizeErrorMessage(error),
+    });
+    throw error;
+  }
 }
 
 /**
@@ -105,15 +130,23 @@ export async function sendMessage(
   if (options.embeds) body.embeds = options.embeds;
   if (options.components) body.components = options.components;
 
-  return fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bot ${botToken}`,
-    },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(5000),
-  });
+  try {
+    return await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bot ${botToken}`,
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(5000),
+    });
+  } catch (error) {
+    console.error('Discord API request failed', {
+      url: sanitizeUrl(url),
+      error: sanitizeErrorMessage(error),
+    });
+    throw error;
+  }
 }
 
 /**
@@ -133,13 +166,21 @@ export async function editMessage(
   if (options.embeds) body.embeds = options.embeds;
   if (options.components) body.components = options.components;
 
-  return fetch(url, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bot ${botToken}`,
-    },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(5000),
-  });
+  try {
+    return await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bot ${botToken}`,
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(5000),
+    });
+  } catch (error) {
+    console.error('Discord API request failed', {
+      url: sanitizeUrl(url),
+      error: sanitizeErrorMessage(error),
+    });
+    throw error;
+  }
 }

@@ -283,3 +283,40 @@ export function decodeBase64Url(str: string): string {
 
   return new TextDecoder().decode(bytes);
 }
+
+/**
+ * Creates a rate-limited (429) response
+ *
+ * Returns an ephemeral message informing the user they've exceeded the rate limit,
+ * along with appropriate HTTP headers.
+ *
+ * @param resetTime - Unix timestamp (ms) when the rate limit resets
+ * @returns Response with 429 status and Retry-After header
+ *
+ * @example
+ * ```typescript
+ * if (!rateLimitCheck.allowed) {
+ *   return rateLimitedResponse(rateLimitCheck.resetTime);
+ * }
+ * ```
+ */
+export function rateLimitedResponse(resetTime: number): Response {
+  const retryAfter = Math.ceil((resetTime - Date.now()) / 1000);
+
+  return new Response(
+    JSON.stringify({
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        content: 'Rate limit exceeded. Please wait before trying again.',
+        flags: MessageFlags.EPHEMERAL,
+      },
+    }),
+    {
+      status: 429,
+      headers: {
+        'Content-Type': 'application/json',
+        'Retry-After': String(Math.max(1, retryAfter)), // At least 1 second
+      },
+    }
+  );
+}
