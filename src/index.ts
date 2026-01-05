@@ -13,7 +13,6 @@
  */
 
 import { Hono } from 'hono';
-import { cors } from 'hono/cors';
 import type { ExtendedLogger } from '@xivdyetools/logger';
 import type { Env } from './types/env.js';
 import { InteractionType, InteractionResponseType } from './types/env.js';
@@ -42,9 +41,6 @@ type Variables = RequestIdVariables & {
 
 // Create Hono app with environment type
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
-
-// Enable CORS for development
-app.use('*', cors());
 
 // Request ID middleware (must be early for tracing)
 app.use('*', requestIdMiddleware);

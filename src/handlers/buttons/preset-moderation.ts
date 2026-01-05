@@ -11,7 +11,7 @@
 
 import type { Env } from '../../types/env.js';
 import { InteractionResponseType } from '../../types/env.js';
-import { ephemeralResponse } from '../../utils/response.js';
+import { ephemeralResponse, isValidUuid, sanitizeErrorMessage } from '../../utils/response.js';
 import type { ExtendedLogger } from '@xivdyetools/logger';
 import { editMessage, sendMessage } from '../../utils/discord-api.js';
 import * as presetApi from '../../services/preset-api.js';
@@ -73,6 +73,10 @@ export async function handlePresetApproveButton(
 
   if (!presetId || !userId) {
     return ephemeralResponse('Invalid button interaction.');
+  }
+
+  if (!isValidUuid(presetId)) {
+    return ephemeralResponse('Invalid preset ID format.');
   }
 
   if (!presetApi.isModerator(env, userId)) {
@@ -146,7 +150,11 @@ async function processApproval(
             color: originalEmbed.color,
             fields: [
               ...(originalEmbed.fields || []),
-              { name: 'Error', value: `Failed to approve: ${error}`, inline: false },
+              {
+                name: 'Error',
+                value: `Failed to approve: ${sanitizeErrorMessage(error, 'Unable to approve preset.')}`,
+                inline: false,
+              },
             ],
             footer: originalEmbed.footer?.text ? { text: originalEmbed.footer.text } : undefined,
             timestamp: originalEmbed.timestamp,
@@ -172,6 +180,10 @@ export async function handlePresetRejectButton(
 
   if (!presetId || !userId) {
     return ephemeralResponse('Invalid button interaction.');
+  }
+
+  if (!isValidUuid(presetId)) {
+    return ephemeralResponse('Invalid preset ID format.');
   }
 
   if (!presetApi.isModerator(env, userId)) {
@@ -219,6 +231,10 @@ export async function handlePresetRevertButton(
 
   if (!presetId || !userId) {
     return ephemeralResponse('Invalid button interaction.');
+  }
+
+  if (!isValidUuid(presetId)) {
+    return ephemeralResponse('Invalid preset ID format.');
   }
 
   if (!presetApi.isModerator(env, userId)) {

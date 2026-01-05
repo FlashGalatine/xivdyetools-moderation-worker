@@ -10,7 +10,7 @@
 
 import type { Env } from '../../types/env.js';
 import { InteractionResponseType } from '../../types/env.js';
-import { errorEmbed } from '../../utils/response.js';
+import { errorEmbed, sanitizeErrorMessage } from '../../utils/response.js';
 import type { ExtendedLogger } from '@xivdyetools/logger';
 import { editMessage, sendMessage } from '../../utils/discord-api.js';
 import * as presetApi from '../../services/preset-api.js';
@@ -179,7 +179,11 @@ async function processRejection(
             color: originalEmbed.color,
             fields: [
               ...(originalEmbed.fields || []),
-              { name: 'Error', value: `Failed to reject: ${error}`, inline: false },
+              {
+                name: 'Error',
+                value: `Failed to reject: ${sanitizeErrorMessage(error, 'Unable to reject preset.')}`,
+                inline: false,
+              },
             ],
             footer: originalEmbed.footer?.text ? { text: originalEmbed.footer.text } : undefined,
             timestamp: originalEmbed.timestamp,
@@ -304,7 +308,11 @@ async function processRevert(
             color: originalEmbed.color,
             fields: [
               ...(originalEmbed.fields || []),
-              { name: 'Error', value: `Failed to revert: ${error}`, inline: false },
+              {
+                name: 'Error',
+                value: `Failed to revert: ${sanitizeErrorMessage(error, 'Unable to revert preset.')}`,
+                inline: false,
+              },
             ],
             footer: originalEmbed.footer?.text ? { text: originalEmbed.footer.text } : undefined,
             timestamp: originalEmbed.timestamp,

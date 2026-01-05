@@ -8,7 +8,7 @@
 
 import type { Env } from '../../types/env.js';
 import { InteractionResponseType } from '../../types/env.js';
-import { errorEmbed } from '../../utils/response.js';
+import { errorEmbed, decodeBase64Url, sanitizeErrorMessage } from '../../utils/response.js';
 import type { ExtendedLogger } from '@xivdyetools/logger';
 import { sendMessage } from '../../utils/discord-api.js';
 import * as presetApi from '../../services/preset-api.js';
@@ -94,7 +94,7 @@ export async function handleBanReasonModal(
     });
   }
 
-  // Parse custom_id: ban_reason_modal_{discordId}_{username}
+  // Parse custom_id: ban_reason_modal_{discordId}_{base64username}
   const idPart = customId.replace('ban_reason_modal_', '');
   const underscoreIndex = idPart.indexOf('_');
 
@@ -109,7 +109,24 @@ export async function handleBanReasonModal(
   }
 
   const targetUserId = idPart.substring(0, underscoreIndex);
-  const targetUsername = idPart.substring(underscoreIndex + 1);
+  const encodedUsername = idPart.substring(underscoreIndex + 1);
+
+  let targetUsername: string;
+  try {
+    targetUsername = decodeBase64Url(encodedUsername);
+  } catch (error) {
+    logger?.error(
+      'Failed to decode username from modal custom_id',
+      error instanceof Error ? error : undefined
+    );
+    return Response.json({
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        embeds: [errorEmbed('Error', 'Invalid modal data.')],
+        flags: 64,
+      },
+    });
+  }
 
   if (!targetUserId) {
     return Response.json({
@@ -215,7 +232,7 @@ async function processBan(
         embeds: [
           errorEmbed(
             'Ban Failed',
-            `Failed to ban **${targetUsername}**: ${error instanceof Error ? error.message : 'Unknown error'}`
+            `Failed to ban **${targetUsername}**: ${sanitizeErrorMessage(error, 'An unexpected error occurred while processing the ban.')}`
           ),
         ],
       });

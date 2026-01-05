@@ -158,13 +158,74 @@ export function isApiEnabled(env: Env): boolean {
   return Boolean(env.PRESETS_API || (env.PRESETS_API_URL && env.BOT_API_SECRET));
 }
 
+// Module-level cache for moderator IDs
+let moderatorIdsCache: Set<string> | null = null;
+
+/**
+ * Validates if a string is a valid Discord snowflake ID
+ * Snowflakes are 17-19 digit numeric strings
+ *
+ * @param id - The ID to validate
+ * @returns true if valid snowflake format, false otherwise
+ */
+function isValidDiscordSnowflake(id: string): boolean {
+  return /^\d{17,19}$/.test(id);
+}
+
+/**
+ * Parse and cache moderator IDs from environment variable
+ * Validates snowflake format and creates a Set for O(1) lookups
+ *
+ * @param env - Environment variables
+ * @returns Set of valid moderator IDs
+ */
+function getModerators(env: Env): Set<string> {
+  // Return cached value if available
+  if (moderatorIdsCache !== null) {
+    return moderatorIdsCache;
+  }
+
+  // Parse and validate moderator IDs
+  const moderatorIds = new Set<string>();
+
+  if (env.MODERATOR_IDS) {
+    const ids = env.MODERATOR_IDS.split(',')
+      .map((id) => id.trim())
+      .filter((id) => id.length > 0);
+
+    for (const id of ids) {
+      if (isValidDiscordSnowflake(id)) {
+        moderatorIds.add(id);
+      } else {
+        // Log invalid IDs but don't fail - this could be logged if logger is available
+        console.warn(`Invalid moderator ID format (not a Discord snowflake): ${id}`);
+      }
+    }
+  }
+
+  // Cache the result
+  moderatorIdsCache = moderatorIds;
+  return moderatorIds;
+}
+
 /**
  * Check if a user is a moderator based on MODERATOR_IDS environment variable
+ * Uses cached Set for O(1) lookup performance
+ *
+ * @param env - Environment variables
+ * @param userId - Discord user ID to check
+ * @returns true if user is a moderator, false otherwise
  */
 export function isModerator(env: Env, userId: string): boolean {
   if (!env.MODERATOR_IDS) return false;
-  const moderatorIds = env.MODERATOR_IDS.split(',').map((id) => id.trim());
-  return moderatorIds.includes(userId);
+
+  // Validate userId format before checking
+  if (!isValidDiscordSnowflake(userId)) {
+    return false;
+  }
+
+  const moderators = getModerators(env);
+  return moderators.has(userId);
 }
 
 // ============================================================================

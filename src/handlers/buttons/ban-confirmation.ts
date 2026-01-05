@@ -10,7 +10,7 @@
 
 import type { Env } from '../../types/env.js';
 import { InteractionResponseType } from '../../types/env.js';
-import { ephemeralResponse } from '../../utils/response.js';
+import { ephemeralResponse, decodeBase64Url, encodeBase64Url } from '../../utils/response.js';
 import type { ExtendedLogger } from '@xivdyetools/logger';
 import * as presetApi from '../../services/preset-api.js';
 
@@ -66,7 +66,7 @@ export async function handleBanConfirmButton(
     return ephemeralResponse('You do not have permission to ban users.');
   }
 
-  // Parse custom_id: ban_confirm_{discordId}_{username}
+  // Parse custom_id: ban_confirm_{discordId}_{base64username}
   const idPart = customId.replace('ban_confirm_', '');
   const underscoreIndex = idPart.indexOf('_');
 
@@ -75,7 +75,18 @@ export async function handleBanConfirmButton(
   }
 
   const targetUserId = idPart.substring(0, underscoreIndex);
-  const targetUsername = idPart.substring(underscoreIndex + 1);
+  const encodedUsername = idPart.substring(underscoreIndex + 1);
+
+  let targetUsername: string;
+  try {
+    targetUsername = decodeBase64Url(encodedUsername);
+  } catch (error) {
+    logger?.error(
+      'Failed to decode username from button custom_id',
+      error instanceof Error ? error : undefined
+    );
+    return ephemeralResponse('Invalid button data.');
+  }
 
   if (!targetUserId) {
     return ephemeralResponse('Invalid target user.');
@@ -84,7 +95,7 @@ export async function handleBanConfirmButton(
   return Response.json({
     type: InteractionResponseType.MODAL,
     data: {
-      custom_id: `ban_reason_modal_${targetUserId}_${targetUsername}`,
+      custom_id: `ban_reason_modal_${targetUserId}_${encodeBase64Url(targetUsername)}`,
       title: 'Ban Reason',
       components: [
         {

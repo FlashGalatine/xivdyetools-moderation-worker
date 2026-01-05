@@ -19,6 +19,8 @@ import {
   messageResponse,
   errorEmbed,
   successEmbed,
+  isValidUuid,
+  encodeBase64Url,
 } from '../../utils/response.js';
 import { editOriginalResponse, sendMessage } from '../../utils/discord-api.js';
 import * as presetApi from '../../services/preset-api.js';
@@ -180,6 +182,13 @@ async function processModerateCommand(
           return;
         }
 
+        if (!isValidUuid(presetId)) {
+          await editOriginalResponse(env.DISCORD_CLIENT_ID, interaction.token, {
+            embeds: [errorEmbed(t.t('common.error'), 'Invalid preset ID format.')],
+          });
+          return;
+        }
+
         const preset = await presetApi.approvePreset(env, presetId, userId, reason);
 
         await editOriginalResponse(env.DISCORD_CLIENT_ID, interaction.token, {
@@ -211,6 +220,13 @@ async function processModerateCommand(
         if (!presetId) {
           await editOriginalResponse(env.DISCORD_CLIENT_ID, interaction.token, {
             embeds: [errorEmbed(t.t('common.error'), t.t('preset.moderation.missingId'))],
+          });
+          return;
+        }
+
+        if (!isValidUuid(presetId)) {
+          await editOriginalResponse(env.DISCORD_CLIENT_ID, interaction.token, {
+            embeds: [errorEmbed(t.t('common.error'), 'Invalid preset ID format.')],
           });
           return;
         }
@@ -348,7 +364,7 @@ async function handleBanUserSubcommand(
               style: 4, // Danger (red)
               label: t.t('ban.yesBan'),
               emoji: { name: '\uD83D\uDD28' },
-              custom_id: `ban_confirm_${targetUserId}_${user.username}`,
+              custom_id: `ban_confirm_${targetUserId}_${encodeBase64Url(user.username)}`,
             },
             {
               type: 2, // Button
