@@ -7,6 +7,7 @@ import { InteractionResponseType } from '../../types/env.js';
 import * as presetApi from '../../services/preset-api.js';
 import * as banService from '../../services/ban-service.js';
 import * as discordApi from '../../utils/discord-api.js';
+import { encodeBase64Url } from '../../utils/response.js';
 
 // Mock modules
 vi.mock('../../utils/discord-api.js', () => ({
@@ -140,6 +141,7 @@ describe('handlePresetCommand', () => {
         token: 'token-1',
         application_id: 'app-123',
         type: 2,
+        channel_id: 'channel-moderation',
         member: { user: { id: 'mod-1', username: 'Moderator' } },
         data: {
           name: 'preset',
@@ -246,6 +248,7 @@ describe('handlePresetCommand', () => {
         token: 'token-1',
         application_id: 'app-123',
         type: 2,
+        channel_id: 'channel-moderation',
         member: { user: { id: 'user-123', username: 'NormalUser' } },
         data: {
           name: 'preset',
@@ -274,6 +277,7 @@ describe('handlePresetCommand', () => {
         token: 'token-1',
         application_id: 'app-123',
         type: 2,
+        channel_id: 'channel-moderation',
         member: { user: { id: 'mod-1', username: 'Moderator' } },
         data: {
           name: 'preset',
@@ -299,6 +303,7 @@ describe('handlePresetCommand', () => {
         token: 'token-1',
         application_id: 'app-123',
         type: 2,
+        channel_id: 'channel-moderation',
         member: { user: { id: 'mod-1', username: 'Moderator' } },
         data: {
           name: 'preset',
@@ -370,6 +375,7 @@ describe('handlePresetCommand', () => {
         token: 'token-1',
         application_id: 'app-123',
         type: 2,
+        channel_id: 'channel-moderation',
         member: { user: { id: 'mod-1', username: 'Moderator' } },
         data: {
           name: 'preset',
@@ -407,7 +413,7 @@ describe('handlePresetCommand', () => {
 
       vi.mocked(presetApi.isModerator).mockReturnValue(true);
       vi.mocked(presetApi.approvePreset).mockResolvedValue({
-        id: 'preset-1',
+        id: 'a0000000-0000-4000-8000-000000000001',
         name: 'Test Preset',
         description: 'Description',
         author_id: 'author-1',
@@ -424,6 +430,7 @@ describe('handlePresetCommand', () => {
         token: 'token-1',
         application_id: 'app-123',
         type: 2,
+        channel_id: 'channel-moderation',
         member: { user: { id: 'mod-1', username: 'Moderator' } },
         data: {
           name: 'preset',
@@ -433,7 +440,7 @@ describe('handlePresetCommand', () => {
               type: 1,
               options: [
                 { name: 'action', type: 3, value: 'approve' },
-                { name: 'preset_id', type: 3, value: 'preset-1' },
+                { name: 'preset_id', type: 3, value: 'a0000000-0000-4000-8000-000000000001' },
               ],
             },
           ],
@@ -445,7 +452,7 @@ describe('handlePresetCommand', () => {
       const waitUntilPromise = vi.mocked(ctx.waitUntil).mock.calls[vi.mocked(ctx.waitUntil).mock.calls.length - 1]?.[0];
       if (waitUntilPromise) await waitUntilPromise;
 
-      expect(presetApi.approvePreset).toHaveBeenCalledWith(env, 'preset-1', 'mod-1', undefined);
+      expect(presetApi.approvePreset).toHaveBeenCalledWith(env, 'a0000000-0000-4000-8000-000000000001', 'mod-1', undefined);
       expect(discordApi.editOriginalResponse).toHaveBeenCalledWith(
         'app-123',
         'token-1',
@@ -465,7 +472,7 @@ describe('handlePresetCommand', () => {
 
       vi.mocked(presetApi.isModerator).mockReturnValue(true);
       vi.mocked(presetApi.approvePreset).mockResolvedValue({
-        id: 'preset-1',
+        id: 'a0000000-0000-4000-8000-000000000001',
         name: 'Test Preset',
         description: 'Description',
         author_id: 'author-1',
@@ -482,6 +489,7 @@ describe('handlePresetCommand', () => {
         token: 'token-1',
         application_id: 'app-123',
         type: 2,
+        channel_id: 'channel-moderation',
         member: { user: { id: 'mod-1', username: 'Moderator' } },
         data: {
           name: 'preset',
@@ -491,7 +499,7 @@ describe('handlePresetCommand', () => {
               type: 1,
               options: [
                 { name: 'action', type: 3, value: 'approve' },
-                { name: 'preset_id', type: 3, value: 'preset-1' },
+                { name: 'preset_id', type: 3, value: 'a0000000-0000-4000-8000-000000000001' },
               ],
             },
           ],
@@ -528,6 +536,7 @@ describe('handlePresetCommand', () => {
         token: 'token-1',
         application_id: 'app-123',
         type: 2,
+        channel_id: 'channel-moderation',
         member: { user: { id: 'mod-1', username: 'Moderator' } },
         data: {
           name: 'preset',
@@ -565,7 +574,7 @@ describe('handlePresetCommand', () => {
 
       vi.mocked(presetApi.isModerator).mockReturnValue(true);
       vi.mocked(presetApi.rejectPreset).mockResolvedValue({
-        id: 'preset-1',
+        id: 'a0000000-0000-4000-8000-000000000001',
         name: 'Test Preset',
         description: 'Description',
         author_id: 'author-1',
@@ -582,6 +591,7 @@ describe('handlePresetCommand', () => {
         token: 'token-1',
         application_id: 'app-123',
         type: 2,
+        channel_id: 'channel-moderation',
         member: { user: { id: 'mod-1', username: 'Moderator' } },
         data: {
           name: 'preset',
@@ -591,7 +601,7 @@ describe('handlePresetCommand', () => {
               type: 1,
               options: [
                 { name: 'action', type: 3, value: 'reject' },
-                { name: 'preset_id', type: 3, value: 'preset-1' },
+                { name: 'preset_id', type: 3, value: 'a0000000-0000-4000-8000-000000000001' },
                 { name: 'reason', type: 3, value: 'Contains inappropriate content' },
               ],
             },
@@ -606,7 +616,7 @@ describe('handlePresetCommand', () => {
 
       expect(presetApi.rejectPreset).toHaveBeenCalledWith(
         env,
-        'preset-1',
+        'a0000000-0000-4000-8000-000000000001',
         'mod-1',
         'Contains inappropriate content'
       );
@@ -640,6 +650,7 @@ describe('handlePresetCommand', () => {
         token: 'token-1',
         application_id: 'app-123',
         type: 2,
+        channel_id: 'channel-moderation',
         member: { user: { id: 'mod-1', username: 'Moderator' } },
         data: {
           name: 'preset',
@@ -649,7 +660,7 @@ describe('handlePresetCommand', () => {
               type: 1,
               options: [
                 { name: 'action', type: 3, value: 'reject' },
-                { name: 'preset_id', type: 3, value: 'preset-1' },
+                { name: 'preset_id', type: 3, value: 'a0000000-0000-4000-8000-000000000001' },
               ],
             },
           ],
@@ -691,6 +702,7 @@ describe('handlePresetCommand', () => {
         token: 'token-1',
         application_id: 'app-123',
         type: 2,
+        channel_id: 'channel-moderation',
         member: { user: { id: 'mod-1', username: 'Moderator' } },
         data: {
           name: 'preset',
@@ -740,6 +752,7 @@ describe('handlePresetCommand', () => {
         token: 'token-1',
         application_id: 'app-123',
         type: 2,
+        channel_id: 'channel-moderation',
         member: { user: { id: 'mod-1', username: 'Moderator' } },
         data: {
           name: 'preset',
@@ -782,6 +795,7 @@ describe('handlePresetCommand', () => {
         token: 'token-1',
         application_id: 'app-123',
         type: 2,
+        channel_id: 'channel-moderation',
         member: { user: { id: 'mod-1', username: 'Moderator' } },
         data: {
           name: 'preset',
@@ -968,7 +982,7 @@ describe('handlePresetCommand', () => {
         ])
       );
       expect(json.data.components[0].components).toHaveLength(2);
-      expect(json.data.components[0].components[0].custom_id).toBe('ban_confirm_target-user_TargetUser');
+      expect(json.data.components[0].components[0].custom_id).toBe(`ban_confirm_target-user_${encodeBase64Url('TargetUser')}`);
       expect(json.data.flags).toBe(64); // Ephemeral
     });
 

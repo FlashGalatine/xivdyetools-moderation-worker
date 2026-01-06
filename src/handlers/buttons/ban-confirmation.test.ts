@@ -7,6 +7,7 @@ import {
 } from './ban-confirmation.js';
 import type { Env } from '../../types/env.js';
 import { InteractionResponseType } from '../../types/env.js';
+import { encodeBase64Url } from '../../utils/response.js';
 import * as presetApi from '../../services/preset-api.js';
 
 // Mock modules
@@ -113,12 +114,13 @@ describe('handleBanConfirmButton', () => {
 
   it('should open ban reason modal with correct data', async () => {
     vi.mocked(presetApi.isModerator).mockReturnValue(true);
+    const encodedUsername = encodeBase64Url('TestUser');
 
     const interaction = {
       id: 'int-1',
       token: 'token-1',
       application_id: 'app-123',
-      data: { custom_id: 'ban_confirm_user-123_TestUser' },
+      data: { custom_id: `ban_confirm_user-123_${encodedUsername}` },
       member: { user: { id: 'mod-1', username: 'Moderator' } },
     };
 
@@ -126,7 +128,7 @@ describe('handleBanConfirmButton', () => {
     const json = await response.json();
 
     expect(json.type).toBe(InteractionResponseType.MODAL);
-    expect(json.data.custom_id).toBe('ban_reason_modal_user-123_TestUser');
+    expect(json.data.custom_id).toBe(`ban_reason_modal_user-123_${encodedUsername}`);
     expect(json.data.title).toBe('Ban Reason');
     expect(json.data.components[0].components[0]).toEqual(
       expect.objectContaining({
@@ -144,12 +146,13 @@ describe('handleBanConfirmButton', () => {
 
   it('should parse custom_id with underscore in username', async () => {
     vi.mocked(presetApi.isModerator).mockReturnValue(true);
+    const encodedUsername = encodeBase64Url('Test_User_Name');
 
     const interaction = {
       id: 'int-1',
       token: 'token-1',
       application_id: 'app-123',
-      data: { custom_id: 'ban_confirm_user-456_Test_User_Name' },
+      data: { custom_id: `ban_confirm_user-456_${encodedUsername}` },
       member: { user: { id: 'mod-1', username: 'Moderator' } },
     };
 
@@ -157,17 +160,18 @@ describe('handleBanConfirmButton', () => {
     const json = await response.json();
 
     expect(json.type).toBe(InteractionResponseType.MODAL);
-    expect(json.data.custom_id).toBe('ban_reason_modal_user-456_Test_User_Name');
+    expect(json.data.custom_id).toBe(`ban_reason_modal_user-456_${encodedUsername}`);
   });
 
   it('should handle user object instead of member', async () => {
     vi.mocked(presetApi.isModerator).mockReturnValue(true);
+    const encodedUsername = encodeBase64Url('TestUser');
 
     const interaction = {
       id: 'int-1',
       token: 'token-1',
       application_id: 'app-123',
-      data: { custom_id: 'ban_confirm_user-123_TestUser' },
+      data: { custom_id: `ban_confirm_user-123_${encodedUsername}` },
       user: { id: 'mod-1', username: 'Moderator' },
     };
 
@@ -179,36 +183,38 @@ describe('handleBanConfirmButton', () => {
 
   it('should extract user ID correctly from beginning of custom_id', async () => {
     vi.mocked(presetApi.isModerator).mockReturnValue(true);
+    const encodedUsername = encodeBase64Url('Username');
 
     const interaction = {
       id: 'int-1',
       token: 'token-1',
       application_id: 'app-123',
-      data: { custom_id: 'ban_confirm_123456789012345678_Username' },
+      data: { custom_id: `ban_confirm_123456789012345678_${encodedUsername}` },
       member: { user: { id: 'mod-1', username: 'Moderator' } },
     };
 
     const response = await handleBanConfirmButton(interaction, env, ctx);
     const json = await response.json();
 
-    expect(json.data.custom_id).toBe('ban_reason_modal_123456789012345678_Username');
+    expect(json.data.custom_id).toBe(`ban_reason_modal_123456789012345678_${encodedUsername}`);
   });
 
   it('should handle special characters in username', async () => {
     vi.mocked(presetApi.isModerator).mockReturnValue(true);
+    const encodedUsername = encodeBase64Url('User.Name-123');
 
     const interaction = {
       id: 'int-1',
       token: 'token-1',
       application_id: 'app-123',
-      data: { custom_id: 'ban_confirm_user-123_User.Name-123' },
+      data: { custom_id: `ban_confirm_user-123_${encodedUsername}` },
       member: { user: { id: 'mod-1', username: 'Moderator' } },
     };
 
     const response = await handleBanConfirmButton(interaction, env, ctx);
     const json = await response.json();
 
-    expect(json.data.custom_id).toBe('ban_reason_modal_user-123_User.Name-123');
+    expect(json.data.custom_id).toBe(`ban_reason_modal_user-123_${encodedUsername}`);
   });
 });
 

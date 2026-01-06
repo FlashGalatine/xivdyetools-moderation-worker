@@ -26,7 +26,8 @@ describe('preset-api', () => {
       PRESETS_API: mockFetcher as unknown as Fetcher,
       BOT_API_SECRET: 'test-api-secret',
       BOT_SIGNING_SECRET: 'test-signing-secret',
-      MODERATOR_IDS: 'mod-1,mod-2,mod-3',
+      // Use valid Discord snowflake format IDs (17-19 digits)
+      MODERATOR_IDS: '12345678901234567,12345678901234568,12345678901234569',
     } as Env;
 
     vi.useFakeTimers();
@@ -74,42 +75,45 @@ describe('preset-api', () => {
 
   describe('isModerator', () => {
     it('should return true for valid moderator ID', () => {
-      expect(isModerator(mockEnv, 'mod-1')).toBe(true);
-      expect(isModerator(mockEnv, 'mod-2')).toBe(true);
-      expect(isModerator(mockEnv, 'mod-3')).toBe(true);
+      // Uses snowflake IDs from mockEnv.MODERATOR_IDS
+      expect(isModerator(mockEnv, '12345678901234567')).toBe(true);
+      expect(isModerator(mockEnv, '12345678901234568')).toBe(true);
+      expect(isModerator(mockEnv, '12345678901234569')).toBe(true);
     });
 
     it('should return false for non-moderator ID', () => {
-      expect(isModerator(mockEnv, 'user-123')).toBe(false);
+      // Valid snowflake format but not in list
+      expect(isModerator(mockEnv, '99999999999999999')).toBe(false);
     });
 
     it('should return false when MODERATOR_IDS is empty', () => {
       const env = { MODERATOR_IDS: '' } as Env;
-      expect(isModerator(env, 'mod-1')).toBe(false);
+      expect(isModerator(env, '12345678901234567')).toBe(false);
     });
 
     it('should return false when MODERATOR_IDS is not set', () => {
       const env = {} as Env;
-      expect(isModerator(env, 'mod-1')).toBe(false);
+      expect(isModerator(env, '12345678901234567')).toBe(false);
     });
 
     it('should handle whitespace in MODERATOR_IDS', () => {
-      const env = { MODERATOR_IDS: 'mod-1 , mod-2  ,  mod-3' } as Env;
-      expect(isModerator(env, 'mod-1')).toBe(true);
-      expect(isModerator(env, 'mod-2')).toBe(true);
-      expect(isModerator(env, 'mod-3')).toBe(true);
+      const env = { MODERATOR_IDS: '12345678901234567 , 12345678901234568  ,  12345678901234569' } as Env;
+      expect(isModerator(env, '12345678901234567')).toBe(true);
+      expect(isModerator(env, '12345678901234568')).toBe(true);
+      expect(isModerator(env, '12345678901234569')).toBe(true);
     });
 
-    it('should be case-sensitive', () => {
-      const env = { MODERATOR_IDS: 'Mod-1' } as Env;
-      expect(isModerator(env, 'Mod-1')).toBe(true);
-      expect(isModerator(env, 'mod-1')).toBe(false);
+    it('should reject invalid snowflake format', () => {
+      // Non-snowflake IDs should always return false, even if in the list
+      const env = { MODERATOR_IDS: 'mod-1,12345678901234567' } as Env;
+      expect(isModerator(env, 'mod-1')).toBe(false); // Invalid format
+      expect(isModerator(env, '12345678901234567')).toBe(true); // Valid format
     });
 
     it('should handle single moderator ID', () => {
-      const env = { MODERATOR_IDS: 'single-mod' } as Env;
-      expect(isModerator(env, 'single-mod')).toBe(true);
-      expect(isModerator(env, 'other-user')).toBe(false);
+      const env = { MODERATOR_IDS: '12345678901234567' } as Env;
+      expect(isModerator(env, '12345678901234567')).toBe(true);
+      expect(isModerator(env, '99999999999999999')).toBe(false);
     });
   });
 

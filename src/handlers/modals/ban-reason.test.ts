@@ -3,6 +3,7 @@ import { handleBanReasonModal, isBanReasonModal } from './ban-reason.js';
 import type { Env } from '../../types/env.js';
 import { InteractionResponseType } from '../../types/env.js';
 import { createMockD1Database } from '@xivdyetools/test-utils';
+import { encodeBase64Url } from '../../utils/response.js';
 import * as presetApi from '../../services/preset-api.js';
 import * as banService from '../../services/ban-service.js';
 import * as discordApi from '../../utils/discord-api.js';
@@ -242,12 +243,13 @@ describe('handleBanReasonModal', () => {
       presetsHidden: 5,
     });
 
+    const encodedUsername = encodeBase64Url('BadUser');
     const interaction = {
       id: 'int-1',
       token: 'token-1',
       application_id: 'app-123',
       data: {
-        custom_id: 'ban_reason_modal_user-123_BadUser',
+        custom_id: `ban_reason_modal_user-123_${encodedUsername}`,
         components: [
           {
             type: 1,
@@ -288,12 +290,13 @@ describe('handleBanReasonModal', () => {
       presetsHidden: 7,
     });
 
+    const encodedUsername = encodeBase64Url('SpamUser');
     const interaction = {
       id: 'int-1',
       token: 'token-1',
       application_id: 'app-123',
       data: {
-        custom_id: 'ban_reason_modal_user-456_SpamUser',
+        custom_id: `ban_reason_modal_user-456_${encodedUsername}`,
         components: [
           {
             type: 1,
@@ -487,12 +490,13 @@ describe('handleBanReasonModal', () => {
       presetsHidden: 2,
     });
 
+    const encodedUsername = encodeBase64Url('Test_User_Name');
     const interaction = {
       id: 'int-1',
       token: 'token-1',
       application_id: 'app-123',
       data: {
-        custom_id: 'ban_reason_modal_user-789_Test_User_Name',
+        custom_id: `ban_reason_modal_user-789_${encodedUsername}`,
         components: [
           {
             type: 1,
@@ -579,12 +583,13 @@ describe('handleBanReasonModal', () => {
       presetsHidden: 0,
     });
 
+    const encodedUsername = encodeBase64Url('User.Name-123');
     const interaction = {
       id: 'int-1',
       token: 'token-1',
       application_id: 'app-123',
       data: {
-        custom_id: 'ban_reason_modal_user-123_User.Name-123',
+        custom_id: `ban_reason_modal_user-123_${encodedUsername}`,
         components: [
           {
             type: 1,

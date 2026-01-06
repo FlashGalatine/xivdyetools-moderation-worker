@@ -10,6 +10,9 @@ import { InteractionResponseType } from '../../types/env.js';
 import * as presetApi from '../../services/preset-api.js';
 import * as discordApi from '../../utils/discord-api.js';
 
+// Valid UUID v4 for testing (implementation requires valid UUID format)
+const VALID_PRESET_ID = '12345678-1234-4123-8123-123456789abc';
+
 // Mock modules
 vi.mock('../../utils/discord-api.js', () => ({
   editMessage: vi.fn(),
@@ -81,7 +84,7 @@ describe('handlePresetApproveButton', () => {
       id: 'int-1',
       token: 'token-1',
       application_id: 'app-123',
-      data: { custom_id: 'preset_approve_preset-1' },
+      data: { custom_id: `preset_approve_${VALID_PRESET_ID}` },
     };
 
     const response = await handlePresetApproveButton(interaction, env, ctx);
@@ -97,7 +100,7 @@ describe('handlePresetApproveButton', () => {
       id: 'int-1',
       token: 'token-1',
       application_id: 'app-123',
-      data: { custom_id: 'preset_approve_preset-1' },
+      data: { custom_id: `preset_approve_${VALID_PRESET_ID}` },
       member: { user: { id: 'user-123', username: 'NormalUser' } },
     };
 
@@ -110,7 +113,7 @@ describe('handlePresetApproveButton', () => {
   it('should return deferred update response', async () => {
     vi.mocked(presetApi.isModerator).mockReturnValue(true);
     vi.mocked(presetApi.approvePreset).mockResolvedValue({
-      id: 'preset-1',
+      id: VALID_PRESET_ID,
       name: 'Test Preset',
       description: 'Description',
       author_id: 'author-1',
@@ -126,7 +129,7 @@ describe('handlePresetApproveButton', () => {
       id: 'int-1',
       token: 'token-1',
       application_id: 'app-123',
-      data: { custom_id: 'preset_approve_preset-1' },
+      data: { custom_id: `preset_approve_${VALID_PRESET_ID}` },
       member: { user: { id: 'mod-1', username: 'Moderator' } },
       channel_id: 'channel-mod',
       message: {
@@ -136,7 +139,7 @@ describe('handlePresetApproveButton', () => {
             title: 'Preset Submission',
             description: 'Test preset description',
             fields: [{ name: 'Author', value: 'Author', inline: true }],
-            footer: { text: 'ID: preset-1' },
+            footer: { text: `ID: ${VALID_PRESET_ID}` },
             timestamp: '2025-01-15T10:00:00Z',
           },
         ],
@@ -155,7 +158,7 @@ describe('handlePresetApproveButton', () => {
 
     vi.mocked(presetApi.isModerator).mockReturnValue(true);
     vi.mocked(presetApi.approvePreset).mockResolvedValue({
-      id: 'preset-1',
+      id: VALID_PRESET_ID,
       name: 'Test Preset',
       description: 'Description',
       author_id: 'author-1',
@@ -171,7 +174,7 @@ describe('handlePresetApproveButton', () => {
       id: 'int-1',
       token: 'token-1',
       application_id: 'app-123',
-      data: { custom_id: 'preset_approve_preset-1' },
+      data: { custom_id: `preset_approve_${VALID_PRESET_ID}` },
       member: { user: { id: 'mod-1', username: 'Moderator' } },
       channel_id: 'channel-mod',
       message: {
@@ -181,7 +184,7 @@ describe('handlePresetApproveButton', () => {
             title: 'Preset Submission',
             description: 'Test preset description',
             fields: [{ name: 'Author', value: 'Author', inline: true }],
-            footer: { text: 'ID: preset-1' },
+            footer: { text: `ID: ${VALID_PRESET_ID}` },
             timestamp: '2025-01-15T10:00:00Z',
           },
         ],
@@ -193,7 +196,7 @@ describe('handlePresetApproveButton', () => {
       const waitUntilPromise = vi.mocked(ctx.waitUntil).mock.calls[vi.mocked(ctx.waitUntil).mock.calls.length - 1]?.[0];
       if (waitUntilPromise) await waitUntilPromise;
 
-    expect(presetApi.approvePreset).toHaveBeenCalledWith(env, 'preset-1', 'mod-1');
+    expect(presetApi.approvePreset).toHaveBeenCalledWith(env, VALID_PRESET_ID, 'mod-1');
     expect(discordApi.editMessage).toHaveBeenCalledWith(
       'test-bot-token',
       'channel-mod',
@@ -220,7 +223,7 @@ describe('handlePresetApproveButton', () => {
 
     vi.mocked(presetApi.isModerator).mockReturnValue(true);
     vi.mocked(presetApi.approvePreset).mockResolvedValue({
-      id: 'preset-1',
+      id: VALID_PRESET_ID,
       name: 'Amazing Preset',
       description: 'Description',
       author_id: 'author-1',
@@ -236,7 +239,7 @@ describe('handlePresetApproveButton', () => {
       id: 'int-1',
       token: 'token-1',
       application_id: 'app-123',
-      data: { custom_id: 'preset_approve_preset-1' },
+      data: { custom_id: `preset_approve_${VALID_PRESET_ID}` },
       member: { user: { id: 'mod-1', username: 'Moderator' } },
       channel_id: 'channel-mod',
       message: {
@@ -259,7 +262,7 @@ describe('handlePresetApproveButton', () => {
             color: 5763719,
             description: 'Preset approved by Moderator',
             footer: {
-              text: 'ID: preset-1',
+              text: `ID: ${VALID_PRESET_ID}`,
             },
             title: '✅ Amazing Preset - Approved',
           },
@@ -271,7 +274,7 @@ describe('handlePresetApproveButton', () => {
   it('should not send log message when log channel is not configured', async () => {
     vi.mocked(presetApi.isModerator).mockReturnValue(true);
     vi.mocked(presetApi.approvePreset).mockResolvedValue({
-      id: 'preset-1',
+      id: VALID_PRESET_ID,
       name: 'Test Preset',
       description: 'Description',
       author_id: 'author-1',
@@ -289,7 +292,7 @@ describe('handlePresetApproveButton', () => {
       id: 'int-1',
       token: 'token-1',
       application_id: 'app-123',
-      data: { custom_id: 'preset_approve_preset-1' },
+      data: { custom_id: `preset_approve_${VALID_PRESET_ID}` },
       member: { user: { id: 'mod-1', username: 'Moderator' } },
       channel_id: 'channel-mod',
       message: {
@@ -316,7 +319,7 @@ describe('handlePresetApproveButton', () => {
       id: 'int-1',
       token: 'token-1',
       application_id: 'app-123',
-      data: { custom_id: 'preset_approve_preset-1' },
+      data: { custom_id: `preset_approve_${VALID_PRESET_ID}` },
       member: { user: { id: 'mod-1', username: 'Moderator' } },
       channel_id: 'channel-mod',
       message: {
@@ -360,7 +363,7 @@ describe('handlePresetApproveButton', () => {
   it('should handle missing channel_id gracefully', async () => {
     vi.mocked(presetApi.isModerator).mockReturnValue(true);
     vi.mocked(presetApi.approvePreset).mockResolvedValue({
-      id: 'preset-1',
+      id: VALID_PRESET_ID,
       name: 'Test Preset',
       description: 'Description',
       author_id: 'author-1',
@@ -376,7 +379,7 @@ describe('handlePresetApproveButton', () => {
       id: 'int-1',
       token: 'token-1',
       application_id: 'app-123',
-      data: { custom_id: 'preset_approve_preset-1' },
+      data: { custom_id: `preset_approve_${VALID_PRESET_ID}` },
       member: { user: { id: 'mod-1', username: 'Moderator' } },
     };
 
@@ -391,7 +394,7 @@ describe('handlePresetApproveButton', () => {
   it('should use fallback username when username is missing', async () => {
     vi.mocked(presetApi.isModerator).mockReturnValue(true);
     vi.mocked(presetApi.approvePreset).mockResolvedValue({
-      id: 'preset-1',
+      id: VALID_PRESET_ID,
       name: 'Test Preset',
       description: 'Description',
       author_id: 'author-1',
@@ -407,7 +410,7 @@ describe('handlePresetApproveButton', () => {
       id: 'int-1',
       token: 'token-1',
       application_id: 'app-123',
-      data: { custom_id: 'preset_approve_preset-1' },
+      data: { custom_id: `preset_approve_${VALID_PRESET_ID}` },
       user: { id: 'mod-1' }, // No username
       channel_id: 'channel-mod',
       message: {
@@ -490,7 +493,7 @@ describe('handlePresetRejectButton', () => {
       id: 'int-1',
       token: 'token-1',
       application_id: 'app-123',
-      data: { custom_id: 'preset_reject_preset-1' },
+      data: { custom_id: `preset_reject_${VALID_PRESET_ID}` },
       member: { user: { id: 'user-123', username: 'NormalUser' } },
     };
 
@@ -507,7 +510,7 @@ describe('handlePresetRejectButton', () => {
       id: 'int-1',
       token: 'token-1',
       application_id: 'app-123',
-      data: { custom_id: 'preset_reject_preset-1' },
+      data: { custom_id: `preset_reject_${VALID_PRESET_ID}` },
       member: { user: { id: 'mod-1', username: 'Moderator' } },
     };
 
@@ -515,7 +518,7 @@ describe('handlePresetRejectButton', () => {
     const json = await response.json();
 
     expect(json.type).toBe(InteractionResponseType.MODAL);
-    expect(json.data.custom_id).toBe('preset_reject_modal_preset-1');
+    expect(json.data.custom_id).toBe(`preset_reject_modal_${VALID_PRESET_ID}`);
     expect(json.data.title).toBe('Reject Preset');
     expect(json.data.components[0].components[0].custom_id).toBe('rejection_reason');
     expect(json.data.components[0].components[0].min_length).toBe(10);
@@ -574,7 +577,7 @@ describe('handlePresetRevertButton', () => {
       id: 'int-1',
       token: 'token-1',
       application_id: 'app-123',
-      data: { custom_id: 'preset_revert_preset-1' },
+      data: { custom_id: `preset_revert_${VALID_PRESET_ID}` },
       member: { user: { id: 'user-123', username: 'NormalUser' } },
     };
 
@@ -591,7 +594,7 @@ describe('handlePresetRevertButton', () => {
       id: 'int-1',
       token: 'token-1',
       application_id: 'app-123',
-      data: { custom_id: 'preset_revert_preset-1' },
+      data: { custom_id: `preset_revert_${VALID_PRESET_ID}` },
       member: { user: { id: 'mod-1', username: 'Moderator' } },
     };
 
@@ -599,7 +602,7 @@ describe('handlePresetRevertButton', () => {
     const json = await response.json();
 
     expect(json.type).toBe(InteractionResponseType.MODAL);
-    expect(json.data.custom_id).toBe('preset_revert_modal_preset-1');
+    expect(json.data.custom_id).toBe(`preset_revert_modal_${VALID_PRESET_ID}`);
     expect(json.data.title).toBe('Revert Preset Edit');
     expect(json.data.components[0].components[0].custom_id).toBe('revert_reason');
     expect(json.data.components[0].components[0].min_length).toBe(10);

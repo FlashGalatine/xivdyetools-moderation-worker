@@ -257,10 +257,11 @@ describe('loggerMiddleware', () => {
       await app.request('/test?param=value');
 
       const mockLogger = vi.mocked(createRequestLogger).mock.results[0]?.value;
+      // Implementation sanitizes and includes query params in path
       expect(mockLogger?.info).toHaveBeenCalledWith(
         'Request started',
         expect.objectContaining({
-          path: '/test',
+          path: '/test?param=value',
         })
       );
     });
