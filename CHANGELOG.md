@@ -1,0 +1,28 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [1.0.0] - 2025-12-14
+
+### Added
+
+- Initial release of XIV Dye Tools Moderation Worker
+- **Preset Moderation** - Review pending presets, approve or reject with reasons
+- **User Management** - Ban/unban users from the Preset Palettes system
+- **Edit Reversion** - Revert flagged edits to previous versions
+- **Multi-Language Support** - Full localization for EN, JA, DE, FR, KO, ZH
+- **Audit Logging** - All moderation actions logged for accountability
+- **Ed25519 Verification** - Secure Discord interaction verification
+- **Slash Commands**:
+  - `/preset moderate [preset_id]` - View and moderate pending presets
+  - `/preset ban_user <user>` - Ban a user from submitting/editing presets
+  - `/preset unban_user <user>` - Remove a ban from a user
+- **Cloudflare Workers Deployment** - Serverless edge execution
+- **D1 Database Integration** - Shared presets, bans, and audit log storage
+- **KV Namespace Integration** - User preferences and rate limiting
+- **Hono Framework** - Lightweight web framework for routing
+- **@xivdyetools/logger Integration** - Structured request logging
+- **@xivdyetools/types Integration** - Shared type definitions
