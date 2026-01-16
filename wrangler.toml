@@ -8,7 +8,7 @@ compatibility_flags = ["nodejs_compat"]
 
 # Custom domain routing
 routes = [
-  { pattern = "moderation-bot.xivdyetools.projectgalatine.com", custom_domain = true }
+  { pattern = "moderation-bot.xivdyetools.app", custom_domain = true }
 ]
 
 # ============================================================================
@@ -40,7 +40,7 @@ service = "xivdyetools-presets-api"
 # ============================================================================
 [vars]
 DISCORD_CLIENT_ID = "1453806659708129374"
-PRESETS_API_URL = "https://api.xivdyetools.projectgalatine.com"
+PRESETS_API_URL = "https://api.xivdyetools.app"
 
 # ============================================================================
 # Secrets (set via wrangler secret put):
@@ -62,7 +62,7 @@ name = "xivdyetools-moderation-worker"
 [env.production.vars]
 # Production Discord Application ID - UPDATE WITH YOUR APP ID
 DISCORD_CLIENT_ID = "YOUR_MODERATION_BOT_CLIENT_ID"
-PRESETS_API_URL = "https://api.xivdyetools.projectgalatine.com"
+PRESETS_API_URL = "https://api.xivdyetools.app"
 
 # KV Namespace for user preferences
 [[env.production.kv_namespaces]]
