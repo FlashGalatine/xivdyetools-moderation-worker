@@ -8,7 +8,8 @@ compatibility_flags = ["nodejs_compat"]
 
 # Custom domain routing
 routes = [
-  { pattern = "moderation-bot.xivdyetools.app", custom_domain = true }
+  { pattern = "moderation-bot.xivdyetools.app", custom_domain = true },
+  { pattern = "moderation-bot.xivdyetools.projectgalatine.com", custom_domain = true }  # Transition - remove after v4 migration
 ]
 
 # ============================================================================
