@@ -92,6 +92,195 @@ function isInModerationChannel(interaction: DiscordInteraction, env: Env): boole
 // /preset moderate
 // ============================================================================
 
+/**
+ * MOD-REF-001 FIX: Context object for moderation action handlers
+ * Reduces parameter passing and improves testability
+ */
+interface ModerationContext {
+  interaction: DiscordInteraction;
+  env: Env;
+  t: Translator;
+  userId: string;
+  logger?: ExtendedLogger;
+}
+
+/**
+ * MOD-REF-001 FIX: Send standardized response via webhook
+ */
+async function sendModerationResponse(
+  ctx: ModerationContext,
+  options: Parameters<typeof editOriginalResponse>[2]
+): Promise<void> {
+  await editOriginalResponse(ctx.env.DISCORD_CLIENT_ID, ctx.interaction.token, options);
+}
+
+/**
+ * MOD-REF-001 FIX: Validate preset ID and send error response if invalid
+ * @returns true if validation failed (error was sent), false if valid
+ */
+async function validatePresetIdOrSendError(
+  ctx: ModerationContext,
+  presetId: string | undefined
+): Promise<boolean> {
+  if (!presetId) {
+    await sendModerationResponse(ctx, {
+      embeds: [errorEmbed(ctx.t.t('common.error'), ctx.t.t('preset.moderation.missingId'))],
+    });
+    return true;
+  }
+
+  if (!isValidUuid(presetId)) {
+    await sendModerationResponse(ctx, {
+      embeds: [errorEmbed(ctx.t.t('common.error'), 'Invalid preset ID format.')],
+    });
+    return true;
+  }
+
+  return false;
+}
+
+// ============================================================================
+// Moderation Action Handlers (MOD-REF-001 FIX)
+// ============================================================================
+
+/**
+ * Handle 'pending' action - list presets awaiting moderation
+ */
+async function handlePendingAction(ctx: ModerationContext): Promise<void> {
+  const presets = await presetApi.getPendingPresets(ctx.env, ctx.userId);
+
+  if (presets.length === 0) {
+    await sendModerationResponse(ctx, {
+      embeds: [
+        successEmbed(
+          ctx.t.t('preset.moderation.pendingQueue'),
+          ctx.t.t('preset.moderation.noPending')
+        ),
+      ],
+    });
+    return;
+  }
+
+  const presetLines = presets.slice(0, 10).map((preset, i) => {
+    return `**${i + 1}.** ${preset.name} by ${preset.author_name || 'Unknown'}\n   ID: \`${preset.id}\``;
+  });
+
+  await sendModerationResponse(ctx, {
+    embeds: [
+      {
+        title: `\uD83D\uDCCB ${ctx.t.t('preset.moderation.pendingQueue')}`,
+        description: [
+          ctx.t.t('preset.moderation.pendingCount', { count: presets.length }),
+          '',
+          presetLines.join('\n\n'),
+        ].join('\n'),
+        color: 0xfee75c,
+        footer: { text: 'Use /preset moderate approve <id> or reject <id> <reason>' },
+      },
+    ],
+  });
+}
+
+/**
+ * Handle 'approve' action - approve a pending preset
+ */
+async function handleApproveAction(
+  ctx: ModerationContext,
+  presetId: string | undefined,
+  reason: string | undefined
+): Promise<void> {
+  // Validate preset ID (shared validation)
+  if (await validatePresetIdOrSendError(ctx, presetId)) {
+    return;
+  }
+
+  const preset = await presetApi.approvePreset(ctx.env, presetId!, ctx.userId, reason);
+
+  await sendModerationResponse(ctx, {
+    embeds: [
+      successEmbed(
+        ctx.t.t('preset.moderation.approved'),
+        ctx.t.t('preset.moderation.approvedDesc', { name: preset.name })
+      ),
+    ],
+  });
+
+  // Notify submission log channel
+  if (ctx.env.SUBMISSION_LOG_CHANNEL_ID) {
+    await sendMessage(ctx.env.DISCORD_TOKEN, ctx.env.SUBMISSION_LOG_CHANNEL_ID, {
+      embeds: [
+        {
+          title: `\u2705 ${preset.name} - Approved`,
+          description: `Preset approved`,
+          color: STATUS_DISPLAY.approved.color,
+          footer: { text: `ID: ${preset.id}` },
+        },
+      ],
+    });
+  }
+}
+
+/**
+ * Handle 'reject' action - reject a pending preset with reason
+ */
+async function handleRejectAction(
+  ctx: ModerationContext,
+  presetId: string | undefined,
+  reason: string | undefined
+): Promise<void> {
+  // Validate preset ID (shared validation)
+  if (await validatePresetIdOrSendError(ctx, presetId)) {
+    return;
+  }
+
+  // Reason is required for rejection
+  if (!reason) {
+    await sendModerationResponse(ctx, {
+      embeds: [errorEmbed(ctx.t.t('common.error'), ctx.t.t('preset.moderation.missingReason'))],
+    });
+    return;
+  }
+
+  const preset = await presetApi.rejectPreset(ctx.env, presetId!, ctx.userId, reason);
+
+  await sendModerationResponse(ctx, {
+    embeds: [
+      {
+        title: `\u274C ${ctx.t.t('preset.moderation.rejected')}`,
+        description: ctx.t.t('preset.moderation.rejectedDesc', { name: preset.name }),
+        color: 0xed4245,
+        fields: [{ name: 'Reason', value: reason }],
+      },
+    ],
+  });
+}
+
+/**
+ * Handle 'stats' action - show moderation statistics
+ */
+async function handleStatsAction(ctx: ModerationContext): Promise<void> {
+  const stats = await presetApi.getModerationStats(ctx.env, ctx.userId);
+
+  await sendModerationResponse(ctx, {
+    embeds: [
+      {
+        title: `\uD83D\uDCCA ${ctx.t.t('preset.moderation.stats')}`,
+        color: 0x5865f2,
+        fields: [
+          { name: '\uD83D\uDFE1 Pending', value: String(stats.pending_count), inline: true },
+          { name: '\uD83D\uDFE2 Approved', value: String(stats.approved_count), inline: true },
+          { name: '\uD83D\uDD34 Rejected', value: String(stats.rejected_count), inline: true },
+          { name: '\uD83D\uDFE0 Flagged', value: String(stats.flagged_count), inline: true },
+        ],
+      },
+    ],
+  });
+}
+
+// ============================================================================
+// Subcommand Entry Points
+// ============================================================================
+
 async function handleModerateSubcommand(
   interaction: DiscordInteraction,
   env: Env,
@@ -138,6 +327,10 @@ async function handleModerateSubcommand(
   return deferResponse;
 }
 
+/**
+ * Process moderation command - dispatches to action handlers
+ * MOD-REF-001 FIX: Refactored from 162-line switch to thin dispatcher
+ */
 async function processModerateCommand(
   interaction: DiscordInteraction,
   env: Env,
@@ -148,145 +341,29 @@ async function processModerateCommand(
   reason?: string,
   logger?: ExtendedLogger
 ): Promise<void> {
+  // Build context object for handlers
+  const ctx: ModerationContext = { interaction, env, t, userId, logger };
+
   try {
     switch (action) {
-      case 'pending': {
-        const presets = await presetApi.getPendingPresets(env, userId);
-
-        if (presets.length === 0) {
-          await editOriginalResponse(env.DISCORD_CLIENT_ID, interaction.token, {
-            embeds: [
-              successEmbed(
-                t.t('preset.moderation.pendingQueue'),
-                t.t('preset.moderation.noPending')
-              ),
-            ],
-          });
-          return;
-        }
-
-        const presetLines = presets.slice(0, 10).map((preset, i) => {
-          return `**${i + 1}.** ${preset.name} by ${preset.author_name || 'Unknown'}\n   ID: \`${preset.id}\``;
-        });
-
-        await editOriginalResponse(env.DISCORD_CLIENT_ID, interaction.token, {
-          embeds: [
-            {
-              title: `\uD83D\uDCCB ${t.t('preset.moderation.pendingQueue')}`,
-              description: [
-                t.t('preset.moderation.pendingCount', { count: presets.length }),
-                '',
-                presetLines.join('\n\n'),
-              ].join('\n'),
-              color: 0xfee75c,
-              footer: { text: 'Use /preset moderate approve <id> or reject <id> <reason>' },
-            },
-          ],
-        });
+      case 'pending':
+        await handlePendingAction(ctx);
         break;
-      }
 
-      case 'approve': {
-        if (!presetId) {
-          await editOriginalResponse(env.DISCORD_CLIENT_ID, interaction.token, {
-            embeds: [errorEmbed(t.t('common.error'), t.t('preset.moderation.missingId'))],
-          });
-          return;
-        }
-
-        if (!isValidUuid(presetId)) {
-          await editOriginalResponse(env.DISCORD_CLIENT_ID, interaction.token, {
-            embeds: [errorEmbed(t.t('common.error'), 'Invalid preset ID format.')],
-          });
-          return;
-        }
-
-        const preset = await presetApi.approvePreset(env, presetId, userId, reason);
-
-        await editOriginalResponse(env.DISCORD_CLIENT_ID, interaction.token, {
-          embeds: [
-            successEmbed(
-              t.t('preset.moderation.approved'),
-              t.t('preset.moderation.approvedDesc', { name: preset.name })
-            ),
-          ],
-        });
-
-        // Notify submission log
-        if (env.SUBMISSION_LOG_CHANNEL_ID) {
-          await sendMessage(env.DISCORD_TOKEN, env.SUBMISSION_LOG_CHANNEL_ID, {
-            embeds: [
-              {
-                title: `\u2705 ${preset.name} - Approved`,
-                description: `Preset approved`,
-                color: STATUS_DISPLAY.approved.color,
-                footer: { text: `ID: ${preset.id}` },
-              },
-            ],
-          });
-        }
+      case 'approve':
+        await handleApproveAction(ctx, presetId, reason);
         break;
-      }
 
-      case 'reject': {
-        if (!presetId) {
-          await editOriginalResponse(env.DISCORD_CLIENT_ID, interaction.token, {
-            embeds: [errorEmbed(t.t('common.error'), t.t('preset.moderation.missingId'))],
-          });
-          return;
-        }
-
-        if (!isValidUuid(presetId)) {
-          await editOriginalResponse(env.DISCORD_CLIENT_ID, interaction.token, {
-            embeds: [errorEmbed(t.t('common.error'), 'Invalid preset ID format.')],
-          });
-          return;
-        }
-
-        if (!reason) {
-          await editOriginalResponse(env.DISCORD_CLIENT_ID, interaction.token, {
-            embeds: [errorEmbed(t.t('common.error'), t.t('preset.moderation.missingReason'))],
-          });
-          return;
-        }
-
-        const preset = await presetApi.rejectPreset(env, presetId, userId, reason);
-
-        await editOriginalResponse(env.DISCORD_CLIENT_ID, interaction.token, {
-          embeds: [
-            {
-              title: `\u274C ${t.t('preset.moderation.rejected')}`,
-              description: t.t('preset.moderation.rejectedDesc', { name: preset.name }),
-              color: 0xed4245,
-              fields: [{ name: 'Reason', value: reason }],
-            },
-          ],
-        });
+      case 'reject':
+        await handleRejectAction(ctx, presetId, reason);
         break;
-      }
 
-      case 'stats': {
-        const stats = await presetApi.getModerationStats(env, userId);
-
-        await editOriginalResponse(env.DISCORD_CLIENT_ID, interaction.token, {
-          embeds: [
-            {
-              title: `\uD83D\uDCCA ${t.t('preset.moderation.stats')}`,
-              color: 0x5865f2,
-              fields: [
-                { name: '\uD83D\uDFE1 Pending', value: String(stats.pending_count), inline: true },
-                { name: '\uD83D\uDFE2 Approved', value: String(stats.approved_count), inline: true },
-                { name: '\uD83D\uDD34 Rejected', value: String(stats.rejected_count), inline: true },
-                { name: '\uD83D\uDFE0 Flagged', value: String(stats.flagged_count), inline: true },
-              ],
-            },
-          ],
-        });
+      case 'stats':
+        await handleStatsAction(ctx);
         break;
-      }
 
       default:
-        await editOriginalResponse(env.DISCORD_CLIENT_ID, interaction.token, {
+        await sendModerationResponse(ctx, {
           embeds: [errorEmbed(t.t('common.error'), `Unknown action: ${action}`)],
         });
     }
@@ -295,7 +372,7 @@ async function processModerateCommand(
       logger.error('Moderate error', error instanceof Error ? error : undefined);
     }
     const message = error instanceof PresetAPIError ? error.message : 'Moderation action failed.';
-    await editOriginalResponse(env.DISCORD_CLIENT_ID, interaction.token, {
+    await sendModerationResponse(ctx, {
       embeds: [errorEmbed(t.t('common.error'), message)],
     });
   }
