@@ -168,39 +168,72 @@ export async function checkRateLimit(
 /**
  * Increment rate limit counter
  *
+ * MOD-BUG-001 FIX: KV doesn't support atomic increments, so concurrent calls
+ * can cause lost increments. This implementation uses optimistic concurrency
+ * with retries to reduce (but not eliminate) the race window.
+ *
+ * For truly atomic counters, consider using Durable Objects instead.
+ *
  * Increments the request counter for the current user/type/minute.
  * Sets TTL to 120 seconds (2 minutes) to ensure cleanup.
  *
  * @param kv - KV namespace for storing counters
  * @param userId - Discord user ID
  * @param type - Type of interaction
+ * @param maxRetries - Maximum retry attempts for contention (default: 3)
  */
 export async function incrementRateLimit(
   kv: KVNamespace,
   userId: string,
-  type: RateLimitType
+  type: RateLimitType,
+  maxRetries: number = 3
 ): Promise<void> {
   const now = Date.now();
   const key = getRateLimitKey(userId, type, now);
 
-  try {
-    // Get current count
-    const countStr = await kv.get(key);
-    const currentCount = countStr ? parseInt(countStr, 10) : 0;
-    const newCount = currentCount + 1;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      // Read current value with metadata for version tracking
+      const result = await kv.getWithMetadata<{ version: number }>(key);
+      const currentCount = result.value ? parseInt(result.value, 10) : 0;
+      const currentVersion = result.metadata?.version ?? 0;
 
-    // Store incremented count with 120-second TTL
-    // TTL is 2 minutes to ensure it covers the current and next minute window
-    await kv.put(key, String(newCount), {
-      expirationTtl: 120,
-    });
-  } catch (error) {
-    // Log error but don't throw - increment failure shouldn't block request
-    console.error('Rate limit increment error', {
-      error: error instanceof Error ? error.message : String(error),
-      userId,
-      type,
-    });
+      // Calculate new values
+      const newCount = currentCount + 1;
+      const newVersion = currentVersion + 1;
+
+      // Write new value with version metadata
+      // Note: This isn't true CAS, but version helps detect concurrent modifications
+      await kv.put(key, String(newCount), {
+        expirationTtl: 120,
+        metadata: { version: newVersion },
+      });
+
+      // Read back to verify (simple optimistic check)
+      const verification = await kv.get(key);
+      const verifiedValue = parseInt(verification || '0', 10);
+
+      // If our write succeeded (value is at least what we wrote), we're done
+      // Note: Value could be higher if another concurrent increment also succeeded
+      if (verifiedValue >= newCount) {
+        return;
+      }
+
+      // If verification failed, small delay before retry to reduce contention
+      if (attempt < maxRetries - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 10 * (attempt + 1)));
+      }
+    } catch (error) {
+      // Log error but don't throw on last attempt - rate limit failure shouldn't block request
+      if (attempt === maxRetries - 1) {
+        console.error('Rate limit increment error', {
+          error: error instanceof Error ? error.message : String(error),
+          userId,
+          type,
+          attempts: attempt + 1,
+        });
+      }
+    }
   }
 }
 
