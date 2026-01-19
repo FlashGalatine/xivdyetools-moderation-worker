@@ -15,49 +15,9 @@ import type { ExtendedLogger } from '@xivdyetools/logger';
 import { editMessage, sendMessage } from '../../utils/discord-api.js';
 import * as presetApi from '../../services/preset-api.js';
 import { STATUS_DISPLAY } from '../../types/preset.js';
-
-// ============================================================================
-// Types
-// ============================================================================
-
-interface ModalInteraction {
-  id: string;
-  token: string;
-  application_id: string;
-  channel_id?: string;
-  message?: {
-    id: string;
-    embeds?: Array<{
-      title?: string;
-      description?: string;
-      color?: number;
-      fields?: Array<{ name: string; value: string; inline?: boolean }>;
-      footer?: { text?: string };
-      timestamp?: string;
-    }>;
-  };
-  member?: {
-    user: {
-      id: string;
-      username: string;
-    };
-  };
-  user?: {
-    id: string;
-    username: string;
-  };
-  data?: {
-    custom_id?: string;
-    components?: Array<{
-      type: number;
-      components: Array<{
-        type: number;
-        custom_id: string;
-        value: string;
-      }>;
-    }>;
-  };
-}
+// MOD-REF-002 FIX: Use shared modal types and helpers
+import type { ModalInteraction } from '../../types/modal.js';
+import { extractTextInputValue, getModalUserId, getModalUsername } from '../../types/modal.js';
 
 // ============================================================================
 // Handlers
@@ -74,8 +34,8 @@ export async function handlePresetRejectionModal(
 ): Promise<Response> {
   const customId = interaction.data?.custom_id || '';
   const presetId = customId.replace('preset_reject_modal_', '');
-  const userId = interaction.member?.user?.id ?? interaction.user?.id;
-  const userName = interaction.member?.user?.username ?? interaction.user?.username ?? 'Moderator';
+  const userId = getModalUserId(interaction);
+  const userName = getModalUsername(interaction);
 
   if (!presetId || !userId) {
     return Response.json({
@@ -205,8 +165,8 @@ export async function handlePresetRevertModal(
 ): Promise<Response> {
   const customId = interaction.data?.custom_id || '';
   const presetId = customId.replace('preset_revert_modal_', '');
-  const userId = interaction.member?.user?.id ?? interaction.user?.id;
-  const userName = interaction.member?.user?.username ?? interaction.user?.username ?? 'Moderator';
+  const userId = getModalUserId(interaction);
+  const userName = getModalUsername(interaction);
 
   if (!presetId || !userId) {
     return Response.json({
@@ -326,34 +286,6 @@ async function processRevert(
 // ============================================================================
 // Helpers
 // ============================================================================
-
-type ModalComponents = Array<{
-  type: number;
-  components: Array<{
-    type: number;
-    custom_id: string;
-    value: string;
-  }>;
-}>;
-
-function extractTextInputValue(
-  components: ModalComponents | undefined,
-  customId: string
-): string | undefined {
-  if (!components) return undefined;
-
-  for (const actionRow of components) {
-    if (actionRow.type !== 1) continue;
-
-    for (const component of actionRow.components) {
-      if (component.type === 4 && component.custom_id === customId) {
-        return component.value;
-      }
-    }
-  }
-
-  return undefined;
-}
 
 /**
  * Check if a custom_id is a preset rejection modal
