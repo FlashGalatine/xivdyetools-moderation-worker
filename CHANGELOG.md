@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-01-19
+
+### Fixed
+
+- **MOD-BUG-001**: Fixed race condition in rate limiting. Applied optimistic concurrency with retries and version metadata (same pattern as DISCORD-BUG-001)
+
+### Refactored
+
+- **MOD-REF-001**: Refactored `processModerateCommand` (162 lines) into focused handler functions
+  - Created `ModerationContext` interface to reduce 8 parameters to 1 context object
+  - Extracted `handlePendingAction()`, `handleApproveAction()`, `handleRejectAction()`, `handleStatsAction()`
+  - Added `validatePresetIdOrSendError()` shared validation eliminating ~20 lines of duplication
+  - Main function reduced from 162 to ~45 lines (thin dispatcher pattern)
+
+- **MOD-REF-002**: Extracted shared modal types to `src/types/modal.ts`
+  - `ModalInteraction` interface, `ModalComponents` type
+  - `extractTextInputValue()`, `getModalUserId()`, `getModalUsername()` helpers
+  - Removed duplicate code from `preset-rejection.ts` and `ban-reason.ts`
+
+---
+
 ## [1.0.0] - 2025-12-14
 
 ### Added
