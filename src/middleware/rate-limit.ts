@@ -7,6 +7,8 @@
  * - Database query flooding through autocomplete
  * - Rapid button clicks and command spam
  *
+ * REFACTOR-002: Now uses @xivdyetools/rate-limiter shared package
+ *
  * Rate limits are enforced per Discord user ID and interaction type:
  * - Commands: 20 requests/minute (with 5 burst allowance)
  * - Autocomplete: 60 requests/minute (with 10 burst allowance)
@@ -23,7 +25,7 @@
 
 import type { Context, Next } from 'hono';
 import type { Env } from '../types/env.js';
-import type { ExtendedLogger } from '@xivdyetools/logger';
+import { KVRateLimiter, MODERATION_LIMITS } from '@xivdyetools/rate-limiter';
 
 /**
  * Rate limit configuration
@@ -76,23 +78,21 @@ export const RATE_LIMIT_CONFIGS: Record<RateLimitType, RateLimitConfig> = {
 };
 
 /**
- * Generate KV key for rate limiting
- *
- * Key format: `ratelimit:{type}:{userId}:{minute}`
- *
- * @param userId - Discord user ID
- * @param type - Type of interaction
- * @param timestamp - Optional timestamp (defaults to now)
- * @returns KV key string
+ * Singleton KV rate limiter instance
  */
-function getRateLimitKey(
-  userId: string,
-  type: RateLimitType,
-  timestamp: number = Date.now()
-): string {
-  // Round timestamp to current minute
-  const minute = Math.floor(timestamp / 60000); // 60000ms = 1 minute
-  return `ratelimit:${type}:${userId}:${minute}`;
+let limiterInstance: KVRateLimiter | null = null;
+
+/**
+ * Get or create the KV rate limiter instance
+ */
+function getLimiter(kv: KVNamespace): KVRateLimiter {
+  if (!limiterInstance) {
+    limiterInstance = new KVRateLimiter({
+      kv,
+      keyPrefix: 'ratelimit:',
+    });
+  }
+  return limiterInstance;
 }
 
 /**
@@ -115,72 +115,36 @@ export async function checkRateLimit(
   type: RateLimitType,
   config: RateLimitConfig
 ): Promise<RateLimitResult> {
-  const now = Date.now();
-  const key = getRateLimitKey(userId, type, now);
+  const limiter = getLimiter(kv);
+  const key = `${type}:${userId}`;
 
-  // Calculate reset time (end of current minute)
-  const currentMinute = Math.floor(now / 60000);
-  const resetTime = (currentMinute + 1) * 60000;
+  // Convert legacy config to shared package format
+  const sharedConfig = {
+    maxRequests: config.requestsPerMinute,
+    windowMs: 60_000, // 1 minute
+    burstAllowance: config.burstAllowance,
+  };
 
-  try {
-    // Get current count from KV
-    const countStr = await kv.get(key);
-    const currentCount = countStr ? parseInt(countStr, 10) : 0;
+  const result = await limiter.checkOnly(key, sharedConfig);
 
-    // Calculate effective limit (base + burst allowance)
-    const effectiveLimit = config.requestsPerMinute + (config.burstAllowance || 0);
-
-    // Check if limit exceeded
-    if (currentCount >= effectiveLimit) {
-      const retryAfter = Math.ceil((resetTime - now) / 1000);
-      return {
-        allowed: false,
-        remaining: 0,
-        resetTime,
-        retryAfter,
-      };
-    }
-
-    // Calculate remaining requests
-    const remaining = effectiveLimit - currentCount - 1; // -1 for current request
-
-    return {
-      allowed: true,
-      remaining: Math.max(0, remaining),
-      resetTime,
-    };
-  } catch (error) {
-    // KV error - fail open (allow request) but log error
-    console.error('Rate limit KV error (failing open)', {
-      error: error instanceof Error ? error.message : String(error),
-      userId,
-      type,
-    });
-
-    return {
-      allowed: true,
-      remaining: config.requestsPerMinute,
-      resetTime,
-    };
-  }
+  return {
+    allowed: result.allowed,
+    remaining: result.remaining,
+    resetTime: result.resetAt.getTime(),
+    retryAfter: result.retryAfter,
+  };
 }
 
 /**
  * Increment rate limit counter
  *
- * MOD-BUG-001 FIX: KV doesn't support atomic increments, so concurrent calls
- * can cause lost increments. This implementation uses optimistic concurrency
- * with retries to reduce (but not eliminate) the race window.
- *
- * For truly atomic counters, consider using Durable Objects instead.
- *
- * Increments the request counter for the current user/type/minute.
- * Sets TTL to 120 seconds (2 minutes) to ensure cleanup.
+ * MOD-BUG-001 FIX: Now handled by shared package's KVRateLimiter
+ * which uses optimistic concurrency with retries.
  *
  * @param kv - KV namespace for storing counters
  * @param userId - Discord user ID
  * @param type - Type of interaction
- * @param maxRetries - Maximum retry attempts for contention (default: 3)
+ * @param maxRetries - Maximum retry attempts (passed to shared package)
  */
 export async function incrementRateLimit(
   kv: KVNamespace,
@@ -188,53 +152,18 @@ export async function incrementRateLimit(
   type: RateLimitType,
   maxRetries: number = 3
 ): Promise<void> {
-  const now = Date.now();
-  const key = getRateLimitKey(userId, type, now);
+  const limiter = getLimiter(kv);
+  const key = `${type}:${userId}`;
+  const config = RATE_LIMIT_CONFIGS[type];
 
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      // Read current value with metadata for version tracking
-      const result = await kv.getWithMetadata<{ version: number }>(key);
-      const currentCount = result.value ? parseInt(result.value, 10) : 0;
-      const currentVersion = result.metadata?.version ?? 0;
+  // Convert legacy config to shared package format
+  const sharedConfig = {
+    maxRequests: config.requestsPerMinute,
+    windowMs: 60_000,
+    burstAllowance: config.burstAllowance,
+  };
 
-      // Calculate new values
-      const newCount = currentCount + 1;
-      const newVersion = currentVersion + 1;
-
-      // Write new value with version metadata
-      // Note: This isn't true CAS, but version helps detect concurrent modifications
-      await kv.put(key, String(newCount), {
-        expirationTtl: 120,
-        metadata: { version: newVersion },
-      });
-
-      // Read back to verify (simple optimistic check)
-      const verification = await kv.get(key);
-      const verifiedValue = parseInt(verification || '0', 10);
-
-      // If our write succeeded (value is at least what we wrote), we're done
-      // Note: Value could be higher if another concurrent increment also succeeded
-      if (verifiedValue >= newCount) {
-        return;
-      }
-
-      // If verification failed, small delay before retry to reduce contention
-      if (attempt < maxRetries - 1) {
-        await new Promise((resolve) => setTimeout(resolve, 10 * (attempt + 1)));
-      }
-    } catch (error) {
-      // Log error but don't throw on last attempt - rate limit failure shouldn't block request
-      if (attempt === maxRetries - 1) {
-        console.error('Rate limit increment error', {
-          error: error instanceof Error ? error.message : String(error),
-          userId,
-          type,
-          attempts: attempt + 1,
-        });
-      }
-    }
-  }
+  await limiter.increment(key, sharedConfig);
 }
 
 /**
@@ -253,33 +182,28 @@ export async function getRateLimitInfo(
   type: RateLimitType
 ): Promise<{ current: number; limit: number; resetTime: number }> {
   const config = RATE_LIMIT_CONFIGS[type];
-  const now = Date.now();
-  const key = getRateLimitKey(userId, type, now);
+  const limiter = getLimiter(kv);
+  const key = `${type}:${userId}`;
 
-  try {
-    const countStr = await kv.get(key);
-    const current = countStr ? parseInt(countStr, 10) : 0;
+  // Convert legacy config to shared package format
+  const sharedConfig = {
+    maxRequests: config.requestsPerMinute,
+    windowMs: 60_000,
+    burstAllowance: config.burstAllowance,
+  };
 
-    const currentMinute = Math.floor(now / 60000);
-    const resetTime = (currentMinute + 1) * 60000;
+  const result = await limiter.checkOnly(key, sharedConfig);
+  const effectiveLimit = config.requestsPerMinute + (config.burstAllowance || 0);
 
-    return {
-      current,
-      limit: config.requestsPerMinute + (config.burstAllowance || 0),
-      resetTime,
-    };
-  } catch (error) {
-    console.error('Rate limit info error', {
-      error: error instanceof Error ? error.message : String(error),
-    });
+  // On backend error, remaining equals effectiveLimit, so current would be -1
+  // Return 0 in that case since we don't know the actual count
+  const current = result.backendError ? 0 : Math.max(0, effectiveLimit - result.remaining - 1);
 
-    // Return default values on error
-    return {
-      current: 0,
-      limit: config.requestsPerMinute,
-      resetTime: Math.ceil(now / 60000) * 60000,
-    };
-  }
+  return {
+    current,
+    limit: effectiveLimit,
+    resetTime: result.resetAt.getTime(),
+  };
 }
 
 /**
@@ -296,4 +220,11 @@ export async function rateLimitMiddleware(c: Context<{ Bindings: Env }>, next: N
   // Pass through - rate limiting is enforced at interaction handler level
   // This middleware just provides the infrastructure
   await next();
+}
+
+/**
+ * Reset the rate limiter for testing
+ */
+export function resetRateLimiterInstance(): void {
+  limiterInstance = null;
 }

@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.2] - 2026-01-25
+
+### Changed
+
+- **REFACTOR-002**: Migrated KV-based rate limiting to `@xivdyetools/rate-limiter` shared package
+  - Uses `KVRateLimiter` with separate `checkOnly()` and `increment()` methods
+  - Preserves MOD-BUG-001 fix (optimistic concurrency with retries) via shared implementation
+  - Maintains command/autocomplete burst allowance configurations
+
+---
+
 ## [1.1.1] - 2026-01-25
 
 ### Security
