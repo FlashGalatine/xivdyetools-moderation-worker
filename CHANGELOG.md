@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.4] - 2026-01-26
+
+### Security
+
+- Added pre-commit hooks for security scanning (detect-secrets, trivy)
+  - Scans for accidentally committed secrets before push
+  - Vulnerability scanning for dependencies and container images
+
+### Changed
+
+- Added Dependabot configuration for automated dependency updates
+  - Weekly npm dependency updates
+  - Weekly GitHub Actions updates
+
+### Fixed
+
+- Updated test suite for `@xivdyetools/auth` migration (REFACTOR-003 follow-up)
+  - Fixed `verify.test.ts` to mock shared auth package instead of deprecated `discord-interactions`
+
+---
+
 ## [1.1.3] - 2026-01-26
 
 ### Changed
