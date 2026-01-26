@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.3] - 2026-01-26
+
+### Changed
+
+- **REFACTOR-003**: Migrated authentication utilities to `@xivdyetools/auth` shared package
+  - Discord signature verification now uses `verifyDiscordRequest()` from shared package
+  - Timing-safe comparison now uses `timingSafeEqual()` from shared package
+  - Reduces code duplication across Discord workers
+
+---
+
 ## [1.1.2] - 2026-01-25
 
 ### Changed
