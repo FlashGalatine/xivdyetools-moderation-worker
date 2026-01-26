@@ -32,7 +32,7 @@
     "hono": "^4.11.4"
   },
   "devDependencies": {
-    "@types/node": "^22.10.2",
+    "@types/node": "^25.0.10",
     "discord-interactions": "^4.4.0",
     "@vitest/coverage-v8": "^4.0.15",
     "@xivdyetools/test-utils": "^1.0.3",
