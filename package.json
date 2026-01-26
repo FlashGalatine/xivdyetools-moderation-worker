@@ -25,7 +25,7 @@
   "license": "MIT",
   "dependencies": {
     "@cloudflare/workers-types": "^4.20251205.0",
-    "@xivdyetools/auth": "file:../xivdyetools-auth",
+    "@xivdyetools/auth": "^1.0.0",
     "@xivdyetools/logger": "^1.0.2",
     "@xivdyetools/rate-limiter": "^1.0.0",
     "@xivdyetools/types": "^1.1.1",
