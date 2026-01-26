@@ -1,6 +1,6 @@
 {
   "name": "xivdyetools-moderation-worker",
-  "version": "1.0.1",
+  "version": "1.1.1",
   "description": "XIV Dye Tools Discord Moderation Bot - Cloudflare Workers Edition",
   "type": "module",
   "scripts": {
@@ -28,7 +28,7 @@
     "@xivdyetools/logger": "^1.0.2",
     "@xivdyetools/types": "^1.1.1",
     "discord-interactions": "^4.4.0",
-    "hono": "^4.10.7"
+    "hono": "^4.11.4"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
@@ -38,7 +38,7 @@
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.15",
-    "wrangler": "^4.53.0"
+    "wrangler": "^4.59.1"
   },
   "engines": {
     "node": ">=18.0.0"
