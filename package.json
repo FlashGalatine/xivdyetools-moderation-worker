@@ -24,15 +24,15 @@
   "author": "Flash Galatine",
   "license": "MIT",
   "dependencies": {
-    "@cloudflare/workers-types": "^4.20251205.0",
+    "@cloudflare/workers-types": "^4.20260131.0",
     "@xivdyetools/auth": "^1.0.0",
     "@xivdyetools/logger": "^1.0.2",
     "@xivdyetools/rate-limiter": "^1.0.0",
     "@xivdyetools/types": "^1.1.1",
-    "hono": "^4.11.4"
+    "hono": "^4.11.7"
   },
   "devDependencies": {
-    "@types/node": "^25.0.10",
+    "@types/node": "^25.2.0",
     "discord-interactions": "^4.4.0",
     "@vitest/coverage-v8": "^4.0.15",
     "@xivdyetools/test-utils": "^1.0.3",
@@ -40,7 +40,7 @@
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.15",
-    "wrangler": "^4.59.1"
+    "wrangler": "^4.61.1"
   },
   "engines": {
     "node": ">=18.0.0"
